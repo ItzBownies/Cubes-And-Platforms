@@ -28,9 +28,9 @@
     const ctx = canvas.getContext("2d");
 
     // Player physics (30x30 cube, “normal” gravity and jump)
-    const GRAVITY = 0.5;
-    const MOVE_SPEED = 3;
-    const JUMP_STRENGTH = -11;
+    const GRAVITY = 0.25;
+    const MOVE_SPEED = 2;
+    const JUMP_STRENGTH = -7;
     const FRICTION = 0.8;
 
     const player = {
@@ -77,11 +77,11 @@
       // Spikes sit on top of some platforms (triangles drawn visually, but box used for collision)
       spikes: [
         // On platform 1
-        { x: 90,  y: 290, w: 20, h: 30 }, // centered spike
+        { x: 110,  y: 290, w: 20, h: 30 }, // centered spike
         // On platform 2
-        { x: 230, y: 260, w: 20, h: 30 },
+        { x: 250, y: 260, w: 20, h: 30 },
         // On platform 3
-        { x: 140, y: 210, w: 20, h: 30 }
+        { x: 160, y: 210, w: 20, h: 30 }
       ]
     };
 
@@ -343,4 +343,3 @@
   </script>
 </body>
 </html>
-
