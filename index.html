@@ -1,345 +1,553 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Cubes and Platforms</title>
-  <style>
-    body {
-      background: #222;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-      color: #fff;
-      font-family: sans-serif;
-    }
-    canvas {
-      image-rendering: pixelated;
-      border: 2px solid #fff;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Cubes and Platforms</title>
+<style>
+body{
+  background:#111;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  height:100vh;
+  margin:0;
+  color:#fff;
+  font-family:sans-serif;
+}
+canvas{
+  border:2px solid #fff;
+  image-rendering:pixelated;
+}
+</style>
 </head>
 <body>
-  <canvas id="game" width="400" height="400"></canvas>
 
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
+<canvas id="game" width="400" height="400"></canvas>
 
-    // Player physics (30x30 cube, “normal” gravity and jump)
-    const GRAVITY = 0.25;
-    const MOVE_SPEED = 2;
-    const JUMP_STRENGTH = -7;
-    const FRICTION = 0.8;
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-    const player = {
-      x: 20,
-      y: 20,
-      w: 30,
-      h: 30,
-      vx: 0,
-      vy: 0,
-      onGround: false
-    };
+/* PLAYER */
+const GRAVITY = 0.25;
+const MOVE_SPEED = 2;
+const JUMP = -7;
+const FRICTION = 0.8;
 
-    // Game state
-    let gameState = "menu"; // "menu", "level1", "level2", "win"
-    let selectedLevelIndex = 0;
-    let unlockedLevels = 1; // 1 or 2
-    let winTimer = 0;
-    let lastWonLevel = null;
+const player = {
+  x:0,y:0,w:30,h:30,vx:0,vy:0,onGround:false
+};
 
-    // Level 1: Basic Platforms
-    const level1 = {
-      spawnX: 20,
-      spawnY: 340,
-      platforms: [
-        { x: 0,   y: 370, w: 400, h: 30, color: "#555" },          // floor
-        { x: 40,  y: 310, w: 80,  h: 10, color: "#555" },
-        { x: 150, y: 270, w: 80,  h: 10, color: "#555" },
-        { x: 260, y: 230, w: 80,  h: 10, color: "#00f", goal: true } // blue goal
-      ],
-      spikes: [] // none for level 1
-    };
+/* GAME STATE */
+let gameState="menu";   // "menu", "play", "win", "create"
+let selected=0;
+let unlocked=1;
+let winTime=0;
 
-    // Level 2: Platforms and Spikes (spikes ON platforms)
-    const level2 = {
-      spawnX: 20,
-      spawnY: 340,
-      platforms: [
-        { x: 0,   y: 370, w: 400, h: 30, color: "#555" },           // floor
-        { x: 60,  y: 320, w: 100, h: 10, color: "#555" },           // platform 1
-        { x: 210, y: 290, w: 90,  h: 10, color: "#555" },           // platform 2
-        { x: 120, y: 240, w: 80,  h: 10, color: "#555" },           // platform 3
-        { x: 260, y: 210, w: 90,  h: 10, color: "#00f", goal: true } // blue goal
-      ],
-      // Spikes sit on top of some platforms (triangles drawn visually, but box used for collision)
-      spikes: [
-        // On platform 1
-        { x: 110,  y: 290, w: 20, h: 30 }, // centered spike
-        // On platform 2
-        { x: 250, y: 260, w: 20, h: 30 },
-        // On platform 3
-        { x: 160, y: 210, w: 20, h: 30 }
-      ]
-    };
+/* LEVELS (BUILT IN) */
+const levels=[
 
-    let currentLevel = level1;
+/* LEVEL 1 */
+{
+spawnX:20, spawnY:340,
+platforms:[
+{ x:0,y:370,w:400,h:30,color:"#555"},
+{ x:40,y:310,w:80,h:10,color:"#555"},
+{ x:150,y:270,w:80,h:10,color:"#555"},
+{ x:260,y:230,w:80,h:10,color:"#00f",goal:true}
+],
+spikes:[]
+},
 
-    // Input
-    const keys = {};
-    document.addEventListener("keydown", e => {
-      keys[e.code] = true;
+/* LEVEL 2 */
+{
+spawnX:20, spawnY:340,
+platforms:[
+{ x:0,y:370,w:400,h:30,color:"#555"},
+{ x:60,y:320,w:100,h:10,color:"#555"},
+{ x:210,y:290,w:90,h:10,color:"#555"},
+{ x:120,y:240,w:80,h:10,color:"#555"},
+{ x:260,y:210,w:90,h:10,color:"#00f",goal:true}
+],
+spikes:[
+{ x:110,y:290,w:20,h:30},
+{ x:250,y:260,w:20,h:30},
+{ x:160,y:210,w:20,h:30}
+]
+},
+
+/* LEVEL 3 */
+{
+spawnX:20, spawnY:340,
+platforms:[
+{ x:0,y:370,w:400,h:30,color:"#555"},
+{ x:40,y:330,w:80,h:10,color:"#555"},
+{ x:160,y:310,w:80,h:10,color:"#555"},
+{ x:280,y:290,w:80,h:10,color:"#555"},
+{ x:60,y:260,w:80,h:10,color:"#555"},
+{ x:190,y:230,w:80,h:10,color:"#555"},
+{ x:300,y:200,w:80,h:10,color:"#555"},
+{ x:40,y:170,w:80,h:10,color:"#555"},
+{ x:170,y:140,w:80,h:10,color:"#555"},
+{ x:260,y:110,w:90,h:10,color:"#00f",goal:true}
+],
+spikes:[
+{ x:80,y:300,w:20,h:30},
+{ x:95,y:230,w:20,h:30},
+{ x:70,y:140,w:20,h:30}
+]
+},
+
+/* LEVEL 4 – CRIMSON TOWERS (UPDATED) */
+{
+spawnX:20, spawnY:340,
+platforms:[
+{ x:0,y:370,w:400,h:30,color:"#555"},
+{ x:40,y:320,w:80,h:10,color:"#555"},
+{ x:160,y:320,w:80,h:10,color:"#555"},
+{ x:280,y:320,w:80,h:10,color:"#555"},
+{ x:80,y:260,w:80,h:10,color:"#555"},
+{ x:220,y:260,w:80,h:10,color:"#555"},
+{ x:40,y:200,w:80,h:10,color:"#555"},
+{ x:160,y:180,w:80,h:10,color:"#555"},
+{ x:270,y:160,w:90,h:10,color:"#00f",goal:true}
+],
+spikes:[
+{ x:70,y:290,w:20,h:30},
+{ x:310,y:290,w:20,h:30},
+{ x:250,y:230,w:20,h:30},
+/* spike BROUGHT BACK ✅ */
+{ x:65,y:170,w:20,h:30 }
+]
+},
+
+/* LEVEL 5 */
+{
+spawnX:20, spawnY:340,
+platforms:[
+{ x:0,y:370,w:400,h:30,color:"#555"},
+{ x:40,y:330,w:80,h:10,color:"#555"},
+{ x:180,y:330,w:80,h:10,color:"#555"},
+{ x:100,y:280,w:80,h:10,color:"#555"},
+{ x:260,y:280,w:80,h:10,color:"#555"},
+{ x:40,y:230,w:80,h:10,color:"#555"},
+{ x:180,y:210,w:80,h:10,color:"#555"},
+{ x:300,y:190,w:80,h:10,color:"#555"},
+{ x:80,y:150,w:80,h:10,color:"#555"},
+{ x:220,y:130,w:90,h:10,color:"#00f",goal:true}
+],
+spikes:[
+{ x:70,y:300,w:20,h:30},
+{ x:130,y:250,w:20,h:30},
+{ x:65,y:200,w:20,h:30},
+{ x:325,y:160,w:20,h:30}
+]
+}
+
+];
+
+let currentLevel=levels[0];
+
+/* CUSTOM LEVEL EDITOR STATE */
+const EDIT_TILE = 10;      // 10x10 grid for placing stuff
+let editorPlatforms = [];  // {x,y,w,h,color}
+let editorSpikes = [];     // spikes same size as main levels (20x30)
+let editorGoal = null;     // single blue 50x10
+let editorStart = { x:20, y:340 }; // default spawn
+
+let editorBrush = "platform"; // "platform","spike","goal","start","erase"
+let editorMouseDown = false;
+let customLevel = null;
+
+/* INPUT */
+const keys={};
+addEventListener("keydown",e=>{
+  keys[e.code]=true;
+
+  // extra controls only in editor
+  if(gameState==="create"){
+    if(e.code==="Digit1") editorBrush="platform";
+    if(e.code==="Digit2") editorBrush="spike";
+    if(e.code==="Digit3") editorBrush="goal";
+    if(e.code==="Digit4") editorBrush="start";
+    if(e.code==="Digit5") editorBrush="erase";
+
+    if(e.code==="KeyC"){ // clear editor
+      editorPlatforms=[];
+      editorSpikes=[];
+      editorGoal=null;
+      editorStart={ x:20,y:340 };
+    }
+
+    if(e.code==="KeyM"){ // back to menu
+      gameState="menu";
+    }
+
+    if(e.code==="KeyP"){ // play custom level
+      buildAndStartCustomLevel();
+    }
+  }
+});
+
+addEventListener("keyup",e=>keys[e.code]=false);
+
+/* MOUSE FOR EDITOR (SWIPE/BRUSH) */
+canvas.addEventListener("mousedown", e=>{
+  if(gameState!=="create") return;
+  editorMouseDown = true;
+  editorPaint(e);
+});
+canvas.addEventListener("mouseup", e=>{
+  editorMouseDown = false;
+});
+canvas.addEventListener("mouseleave", e=>{
+  editorMouseDown = false;
+});
+canvas.addEventListener("mousemove", e=>{
+  if(gameState!=="create" || !editorMouseDown) return;
+  editorPaint(e);
+});
+
+/* HELPERS */
+function hit(a,b){
+  return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
+}
+
+function startLevel(i){
+  currentLevel=levels[i];
+  currentLevel.isCustom = false;
+  player.x=currentLevel.spawnX;
+  player.y=currentLevel.spawnY;
+  player.vx=player.vy=0;
+  player.onGround=false;
+}
+
+function restartCurrentLevel(){
+  if(currentLevel && currentLevel.isCustom){
+    player.x=currentLevel.spawnX;
+    player.y=currentLevel.spawnY;
+    player.vx=player.vy=0;
+    player.onGround=false;
+  }else{
+    startLevel(levels.indexOf(currentLevel));
+  }
+}
+
+/* EDITOR HELPERS */
+function getCanvasPos(evt){
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const x = (evt.clientX - rect.left) * scaleX;
+  const y = (evt.clientY - rect.top) * scaleY;
+  return {x,y};
+}
+
+function editorPaint(evt){
+  const pos = getCanvasPos(evt);
+  const gx = Math.floor(pos.x / EDIT_TILE);
+  const gy = Math.floor(pos.y / EDIT_TILE);
+  const x = gx * EDIT_TILE;
+  const y = gy * EDIT_TILE;
+
+  if(editorBrush==="platform"){
+    // remove any platform exactly here then add
+    editorPlatforms = editorPlatforms.filter(p=>p.x!==x || p.y!==y);
+    editorPlatforms.push({ x, y, w:10, h:10, color:"#555" });
+  }else if(editorBrush==="spike"){
+    // spikes same size as main levels: 20x30
+    const sx = x;
+    const sy = y;
+    editorSpikes = editorSpikes.filter(s=>s.x!==sx || s.y!==sy);
+    editorSpikes.push({ x:sx, y:sy, w:20, h:30 });
+  }else if(editorBrush==="goal"){
+    editorGoal = { x, y, w:50, h:10, color:"#00f", goal:true };
+  }else if(editorBrush==="start"){
+    editorStart = { x, y };
+  }else if(editorBrush==="erase"){
+    editorPlatforms = editorPlatforms.filter(p=>p.x!==x || p.y!==y);
+    editorSpikes = editorSpikes.filter(s=>!(x>=s.x && x<s.x+s.w && y>=s.y && y<s.y+s.h));
+    if(editorGoal && x>=editorGoal.x && x<editorGoal.x+editorGoal.w && y>=editorGoal.y && y<editorGoal.y+editorGoal.h){
+      editorGoal=null;
+    }
+    if(editorStart && editorStart.x===x && editorStart.y===y){
+      editorStart=null;
+    }
+  }
+}
+
+function buildAndStartCustomLevel(){
+  const platforms = [];
+
+  // add a floor so you can't just fall forever
+  platforms.push({ x:0,y:370,w:400,h:30,color:"#333" });
+
+  // add placed platforms
+  for(const p of editorPlatforms){
+    platforms.push({ x:p.x, y:p.y, w:p.w, h:p.h, color:p.color });
+  }
+
+  // add goal if there is one
+  if(editorGoal){
+    platforms.push(editorGoal);
+  }
+
+  const spikes = editorSpikes.map(s=>({ x:s.x, y:s.y, w:s.w, h:s.h }));
+
+  customLevel = {
+    spawnX: editorStart ? editorStart.x : 20,
+    spawnY: editorStart ? editorStart.y : 340,
+    platforms,
+    spikes,
+    isCustom: true
+  };
+
+  currentLevel = customLevel;
+  player.x = customLevel.spawnX;
+  player.y = customLevel.spawnY;
+  player.vx = player.vy = 0;
+  player.onGround = false;
+  gameState = "play";
+}
+
+/* UPDATE */
+function update(){
+  if(gameState==="menu"){menuUpdate();return;}
+  if(gameState==="win"){
+    if(performance.now()>winTime) gameState="menu";
+    return;
+  }
+  if(gameState==="create"){
+    editorUpdate();
+    return;
+  }
+
+  // GAMEPLAY ("play")
+  gameplayUpdate();
+}
+
+function gameplayUpdate(){
+  if(keys.Escape){gameState="menu";keys.Escape=false;}
+
+  if(keys.ArrowLeft||keys.KeyA) player.vx=-MOVE_SPEED;
+  else if(keys.ArrowRight||keys.KeyD) player.vx=MOVE_SPEED;
+  else{
+    player.vx*=FRICTION;
+    if(Math.abs(player.vx)<.05) player.vx=0;
+  }
+
+  if((keys.Space||keys.ArrowUp||keys.KeyW)&&player.onGround){
+    player.vy=JUMP;
+    player.onGround=false;
+    keys.Space=keys.ArrowUp=keys.KeyW=false;
+  }
+
+  player.vy+=GRAVITY;
+
+  // horizontal
+  player.x+=player.vx;
+  for(const p of currentLevel.platforms){
+    if(hit(player,p)){
+      player.x+=player.vx>0?-1:1;
+      player.vx=0;
+    }
+  }
+
+  // vertical
+  player.y+=player.vy;
+  player.onGround=false;
+  let goal=false;
+  for(const p of currentLevel.platforms){
+    if(hit(player,p)){
+      if(player.vy>0){
+        player.y=p.y-player.h;
+        player.vy=0;
+        player.onGround=true;
+        if(p.goal) goal=true;
+      }else{
+        player.y=p.y+p.h;
+        player.vy=0;
+      }
+    }
+  }
+
+  // spikes
+  for(const s of currentLevel.spikes){
+    if(hit(player,s)){
+      restartCurrentLevel();
+    }
+  }
+
+  // fall off
+  if(player.y>450){
+    restartCurrentLevel();
+  }
+
+  // win
+  if(goal){
+    unlocked=Math.max(unlocked,levels.indexOf(currentLevel)+2);
+    gameState="win";
+    winTime=performance.now()+2000;
+  }
+}
+
+/* EDITOR UPDATE (mainly keys are handled in keydown) */
+function editorUpdate(){
+  // nothing special per-frame right now
+}
+
+/* MENU */
+function menuUpdate(){
+  if(keys.ArrowUp||keys.KeyW){
+    selected--;
+    keys.ArrowUp=keys.KeyW=false;
+  }
+  if(keys.ArrowDown||keys.KeyS){
+    selected++;
+    keys.ArrowDown=keys.KeyS=false;
+  }
+
+  const maxIndex = levels.length; // last index is "Custom Level Editor"
+  if(selected<0) selected=0;
+  if(selected>maxIndex) selected=maxIndex;
+
+  if(keys.Enter||keys.Space){
+    if(selected < levels.length){
+      // built-in level
+      if(selected < unlocked){
+        startLevel(selected);
+        gameState="play";
+      }
+      // if locked, do nothing
+    }else{
+      // custom editor
+      gameState="create";
+    }
+    keys.Enter=keys.Space=false;
+  }
+}
+
+/* DRAW */
+function draw(){
+  ctx.clearRect(0,0,400,400);
+
+  if(gameState==="menu"){
+    ctx.fillStyle="#fff";
+    ctx.textAlign="center";
+    ctx.font="24px sans-serif";
+    ctx.fillText("Cubes and Plats",200,70);
+
+    ctx.font="16px sans-serif";
+
+    // built-in levels
+    levels.forEach((_,i)=>{
+      ctx.fillStyle = (i===selected) ? "#0f0" : "#ccc";
+      const label = "Level "+(i+1)+(i>=unlocked?" (locked)":"");
+      ctx.fillText(label,200,140+i*28);
     });
-    document.addEventListener("keyup", e => {
-      keys[e.code] = false;
-    });
 
-    function rectIntersect(a, b) {
-      return (
-        a.x < b.x + b.w &&
-        a.x + a.w > b.x &&
-        a.y < b.y + b.h &&
-        a.y + a.h > b.y
-      );
-    }
+    // custom editor option
+    const customIndex = levels.length;
+    const y = 140 + levels.length*28 + 20;
+    ctx.fillStyle = (customIndex===selected) ? "#0f0" : "#ccc";
+    ctx.fillText("Custom Level Editor (Beta)",200,y);
 
-    function setLevel(levelNumber) {
-      currentLevel = levelNumber === 1 ? level1 : level2;
-      player.x = currentLevel.spawnX;
-      player.y = currentLevel.spawnY;
-      player.vx = 0;
-      player.vy = 0;
-      player.onGround = false;
-    }
+    return;
+  }
 
-    function updateMenu() {
-      // Move selection up/down
-      if (keys["ArrowUp"] || keys["KeyW"]) {
-        selectedLevelIndex = 0;
-      }
-      if (keys["ArrowDown"] || keys["KeyS"]) {
-        selectedLevelIndex = 1;
-      }
+  if(gameState==="win"){
+    ctx.fillStyle="#0f0";
+    ctx.textAlign="center";
+    ctx.font="32px sans-serif";
+    ctx.fillText("YOU WIN!",200,200);
+    return;
+  }
 
-      // Clamp by unlocked levels
-      if (selectedLevelIndex >= unlockedLevels) {
-        selectedLevelIndex = unlockedLevels - 1;
-      }
-      if (selectedLevelIndex < 0) selectedLevelIndex = 0;
+  if(gameState==="create"){
+    drawEditor();
+    return;
+  }
 
-      // Enter to start selected level (if unlocked)
-      if (keys["Enter"] || keys["Space"]) {
-        if (selectedLevelIndex === 0) {
-          setLevel(1);
-          gameState = "level1";
-        } else if (selectedLevelIndex === 1 && unlockedLevels >= 2) {
-          setLevel(2);
-          gameState = "level2";
-        }
-        // prevent immediate re-trigger
-        keys["Enter"] = false;
-        keys["Space"] = false;
-      }
-    }
+  // PLAY
+  for(const p of currentLevel.platforms){
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x,p.y,p.w,p.h);
+  }
 
-    function updateLevel() {
-      // Return to menu with Escape
-      if (keys["Escape"]) {
-        gameState = "menu";
-        keys["Escape"] = false;
-        return;
-      }
+  for(const s of currentLevel.spikes){
+    ctx.fillStyle="#f00";
+    ctx.beginPath();
+    ctx.moveTo(s.x,s.y+s.h);
+    ctx.lineTo(s.x+s.w/2,s.y);
+    ctx.lineTo(s.x+s.w,s.y+s.h);
+    ctx.fill();
+  }
 
-      // Horizontal input
-      if (keys["ArrowLeft"] || keys["KeyA"]) {
-        player.vx = -MOVE_SPEED;
-      } else if (keys["ArrowRight"] || keys["KeyD"]) {
-        player.vx = MOVE_SPEED;
-      } else {
-        player.vx *= FRICTION;
-        if (Math.abs(player.vx) < 0.05) player.vx = 0;
-      }
+  ctx.fillStyle="#0f0";
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+}
 
-      // Jump
-      if ((keys["Space"] || keys["ArrowUp"] || keys["KeyW"]) && player.onGround) {
-        player.vy = JUMP_STRENGTH;
-        player.onGround = false;
-      }
+/* EDITOR DRAW */
+function drawEditor(){
+  ctx.fillStyle="#000";
+  ctx.fillRect(0,0,400,400);
 
-      // Gravity
-      player.vy += GRAVITY;
+  // grid
+  ctx.strokeStyle="#222";
+  for(let x=0;x<=400;x+=EDIT_TILE){
+    ctx.beginPath();
+    ctx.moveTo(x,0);
+    ctx.lineTo(x,400);
+    ctx.stroke();
+  }
+  for(let y=0;y<=400;y+=EDIT_TILE){
+    ctx.beginPath();
+    ctx.moveTo(0,y);
+    ctx.lineTo(400,y);
+    ctx.stroke();
+  }
 
-      // Horizontal movement + platform collision
-      player.x += player.vx;
-      for (const p of currentLevel.platforms) {
-        const platRect = { x: p.x, y: p.y, w: p.w, h: p.h };
-        if (rectIntersect(player, platRect)) {
-          if (player.vx > 0) {
-            player.x = p.x - player.w;
-          } else if (player.vx < 0) {
-            player.x = p.x + p.w;
-          }
-          player.vx = 0;
-        }
-      }
+  // platforms
+  for(const p of editorPlatforms){
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x,p.y,p.w,p.h);
+  }
 
-      // Vertical movement + platform collision
-      player.y += player.vy;
-      player.onGround = false;
-      let landedOnGoal = false;
+  // spikes (same size as main levels)
+  for(const s of editorSpikes){
+    ctx.fillStyle="#f00";
+    ctx.beginPath();
+    ctx.moveTo(s.x,s.y+s.h);
+    ctx.lineTo(s.x+s.w/2,s.y);
+    ctx.lineTo(s.x+s.w,s.y+s.h);
+    ctx.closePath();
+    ctx.fill();
+  }
 
-      for (const p of currentLevel.platforms) {
-        const platRect = { x: p.x, y: p.y, w: p.w, h: p.h };
-        if (rectIntersect(player, platRect)) {
-          if (player.vy > 0) { // falling down
-            player.y = p.y - player.h;
-            player.vy = 0;
-            player.onGround = true;
-            if (p.goal) landedOnGoal = true;
-          } else if (player.vy < 0) { // hitting from below
-            player.y = p.y + p.h;
-            player.vy = 0;
-          }
-        }
-      }
+  // goal
+  if(editorGoal){
+    ctx.fillStyle=editorGoal.color;
+    ctx.fillRect(editorGoal.x,editorGoal.y,editorGoal.w,editorGoal.h);
+  }
 
-      // Spikes collision
-      for (const s of currentLevel.spikes) {
-        const spikeRect = { x: s.x, y: s.y, w: s.w, h: s.h };
-        if (rectIntersect(player, spikeRect)) {
-          // reset to spawn for this level
-          player.x = currentLevel.spawnX;
-          player.y = currentLevel.spawnY;
-          player.vx = 0;
-          player.vy = 0;
-          player.onGround = false;
-        }
-      }
+  // start (outline box where player will spawn)
+  if(editorStart){
+    ctx.strokeStyle="#0f0";
+    ctx.strokeRect(editorStart.x,editorStart.y,30,30);
+  }
 
-      // Keep player inside canvas
-      if (player.x < 0) player.x = 0;
-      if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+  // UI text
+  ctx.fillStyle="#fff";
+  ctx.textAlign="left";
+  ctx.font="12px sans-serif";
+  ctx.fillText("Editor: 1=Platform  2=Spike  3=Goal  4=Start  5=Erase",10,15);
+  ctx.fillText("Brush: "+editorBrush+"   P=Play  M=Menu  C=Clear",10,30);
+  ctx.fillText("Tip: You need a blue goal to win your custom level.",10,45);
+}
 
-      // If fall off, reset level
-      if (player.y > canvas.height + 50) {
-        player.x = currentLevel.spawnX;
-        player.y = currentLevel.spawnY;
-        player.vx = 0;
-        player.vy = 0;
-        player.onGround = false;
-      }
+/* LOOP */
+(function loop(){update();draw();requestAnimationFrame(loop);})();
+</script>
 
-      // Win if landed on the blue goal platform
-      if (landedOnGoal) {
-        gameState = "win";
-        winTimer = performance.now() + 2000;
-        lastWonLevel = (currentLevel === level1) ? 1 : 2;
-
-        if (lastWonLevel === 1 && unlockedLevels < 2) {
-          unlockedLevels = 2; // unlock level 2
-        }
-      }
-    }
-
-    function updateWin(now) {
-      // After 2 seconds, go back to menu
-      if (now >= winTimer) {
-        gameState = "menu";
-      }
-    }
-
-    function drawMenu() {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = "#fff";
-      ctx.textAlign = "center";
-
-      ctx.font = "24px sans-serif";
-      ctx.fillText("Cubes and Plats", canvas.width / 2, 80);
-
-      ctx.font = "16px sans-serif";
-      ctx.fillText("Use W/S or Up/Down, Enter/Space to select", canvas.width / 2, 110);
-
-      const levels = [
-        { name: "Basic Platforms", unlocked: true },
-        { name: "Platforms and Spikes", unlocked: unlockedLevels >= 2 }
-      ];
-
-      levels.forEach((level, index) => {
-        const y = 160 + index * 40;
-        let text = level.name;
-        if (!level.unlocked) text += " (locked)";
-
-        if (index === selectedLevelIndex) {
-          ctx.fillStyle = "#0f0";
-        } else {
-          ctx.fillStyle = "#ccc";
-        }
-
-        ctx.fillText(text, canvas.width / 2, y);
-      });
-    }
-
-    function drawLevel() {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Platforms
-      for (const p of currentLevel.platforms) {
-        ctx.fillStyle = p.color || "#555";
-        ctx.fillRect(p.x, p.y, p.w, p.h);
-      }
-
-      // Spikes as red triangles
-      for (const s of currentLevel.spikes) {
-        ctx.fillStyle = "#f00";
-        ctx.beginPath();
-        ctx.moveTo(s.x, s.y + s.h);           // left bottom
-        ctx.lineTo(s.x + s.w / 2, s.y);       // top
-        ctx.lineTo(s.x + s.w, s.y + s.h);     // right bottom
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // Player cube
-      ctx.fillStyle = "#0f0";
-      ctx.fillRect(player.x, player.y, player.w, player.h);
-    }
-
-    function drawWin() {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      ctx.fillStyle = "#0f0";
-      ctx.textAlign = "center";
-      ctx.font = "32px sans-serif";
-      ctx.fillText("YOU WIN!", canvas.width / 2, canvas.height / 2);
-
-      ctx.font = "16px sans-serif";
-      if (lastWonLevel === 1 && unlockedLevels >= 2) {
-        ctx.fillText("Level 2 unlocked!", canvas.width / 2, canvas.height / 2 + 30);
-      }
-    }
-
-    function loop(now) {
-      if (gameState === "menu") {
-        updateMenu();
-        drawMenu();
-      } else if (gameState === "level1" || gameState === "level2") {
-        updateLevel();
-        drawLevel();
-      } else if (gameState === "win") {
-        updateWin(now);
-        drawWin();
-      }
-
-      requestAnimationFrame(loop);
-    }
-
-    requestAnimationFrame(loop);
-  </script>
 </body>
 </html>
